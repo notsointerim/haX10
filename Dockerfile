@@ -1,4 +1,4 @@
-ARG BUILD_FROM
+ARG BUILD_FROM=ghcr.io/home-assistant/base:3.19
 FROM $BUILD_FROM
 
 RUN apk add --update --no-cache wget bash perl perl-anyevent make perl-app-cpanminus perl-sub-name
