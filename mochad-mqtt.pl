@@ -774,13 +774,13 @@ sub process_security_line {
 
     my $key   = 'SEC' . normalize_secaddr($addr);
     my $state = secfunc_to_state($func);
-
+	AE::log error => "Unhandled security func: $func (addr $addr)";
     unless ( defined $state ) {
         AE::log info => "Unhandled security func: $func (addr $addr)";
         return;
     }
 
-    AE::log info => "processing security $key: $func => $state";
+    AE::log error => "processing security $key: $func => $state";
 
     if ( $ignore{$key} ) {
         AE::log debug => "ignoring security device $key";
