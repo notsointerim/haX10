@@ -31,7 +31,7 @@ options:
       ping: "ping/x10/_ping"
       prefix: "home/x10"
   mochad:
-    - host: "homeassistant"
+    - host: "49fb923e-mochad"
       port: 1099
   hass:
     - discovery_enable: "true"
