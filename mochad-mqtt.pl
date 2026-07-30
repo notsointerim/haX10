@@ -636,6 +636,7 @@ sub process_x10_line {
 
     send_mqtt_message( 'passthru', $input, 0 ) if ( $config{passthru} );
 
+	AE::log error => "Raw data: $input";
     if ($raw) { }
     elsif ( $input =~ m{RFSEC\s+Addr:\s+([0-9A-Fx:]+)\s+Func:\s+(\S+)}i ) {
 	    AE::log erorr => "process x10 line RFSEC $input: $1";
