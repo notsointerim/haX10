@@ -796,13 +796,11 @@ sub process_security_line {
     $status{'state'}    = $state;
     $status{'instance'} = $config{mm_instance};
 
-	AE::log error => "device status %status";
-
     my $alias = defined $devcodes{$key} ? $devcodes{$key} : lc $key;
     $status{'alias'} = $alias if ( defined $devcodes{$key} );
 
 	AE::log error => "device alias $alias";
-	AE::log error => "device status %status";
+	
 	
     send_mqtt_status( $alias, \%status );
     save_state( $alias, \%status );
