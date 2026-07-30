@@ -638,6 +638,8 @@ sub process_x10_line {
 
     if ($raw) { }
     elsif ( $input =~ m{RFSEC\s+Addr:\s+([0-9A-Fx:]+)\s+Func:\s+(\S+)}i ) {
+	    AE::log erorr => "process x10 line RFSEC $input: $1";
+		AE::log error => "process x10 line RFSEC $input: $2";
         process_security_line( $1, $2 );
     }
     elsif ( $input =~ m{RF\sHouseUnit:\s+([A-Z])(\d+)\s+Func:\s+([\sa-z]+)}i ) {
