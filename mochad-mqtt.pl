@@ -10,6 +10,13 @@
 # ie for RF HouseUnit A10 it is entered and stored as A9910 to distinguish it from the powerline HouseUnit A10
 # also did a few changes to help make it work as a HA add-on.
 #
+# Added support for X10 RFSEC security devices (door/window contacts, motion
+# sensors). These devices don't have a house/unit code at all -- mochad
+# reports them as a hex Addr with a Func string like Motion_alert_MS10A /
+# Contact_normal_min_DS10A instead of on/off. They're handled as a fully
+# separate path (process_security_line) rather than being shoehorned into
+# the house/unit code space.
+#
 #
 #
 #
@@ -213,6 +220,23 @@ sub read_config_file {
             }
         }
 
+        # RFSEC security devices (contact/motion sensors) have no house/unit
+        # code -- mochad reports them by hex Addr instead. Accept a
+        # "sec_addr" field (string or array) in the config and turn each
+        # address into a "SEC<hex>" pseudo-devcode. The SEC prefix can't
+        # collide with house/unit codes, which are always a single A-P
+        # letter followed by digits.
+        my @secaddrs = ();
+        if ( defined $tmp{'sec_addr'} ) {
+            @secaddrs =
+              ref( $tmp{'sec_addr'} ) eq 'ARRAY'
+              ? @{ $tmp{'sec_addr'} }
+              : ( $tmp{'sec_addr'} );
+        }
+        for my $a (@secaddrs) {
+            push( @devcodes, 'SEC' . normalize_secaddr($a) );
+        }
+
         if ($err) {
             AE::log error => Dumper( \%tmp );
             next;
@@ -324,6 +348,27 @@ sub str_range {
         elsif (/\d+/) { $arr[$_] = 1; }
     }
     return @arr;
+}
+
+sub normalize_secaddr {
+    my ($addr) = @_;
+
+    $addr = uc $addr;
+    $addr =~ s/^0X//;
+    $addr =~ s/://g;
+
+    return $addr;    # "0x11" -> "11", "C6:1B:00" -> "C61B00"
+}
+
+sub secfunc_to_state {
+    my ($func) = @_;
+
+    return 'on'  if ( $func =~ /_alert/i || $func =~ /^Panic/i );
+    return 'off' if ( $func =~ /_normal/i || $func =~ /^Disarm/i );
+
+    # Arm_Home/Arm_Away/Lights_On/Lights_Off from an SH624 keyfob aren't
+    # sensor state -- leave unhandled for now rather than guess.
+    return undef;
 }
 
 sub mqtt_error_cb {
@@ -592,6 +637,9 @@ sub process_x10_line {
     send_mqtt_message( 'passthru', $input, 0 ) if ( $config{passthru} );
 
     if ($raw) { }
+    elsif ( $input =~ m{RFSEC\s+Addr:\s+([0-9A-Fx:]+)\s+Func:\s+(\S+)}i ) {
+        process_security_line( $1, $2 );
+    }
     elsif ( $input =~ m{RF\sHouseUnit:\s+([A-Z])(\d+)\s+Func:\s+([\sa-z]+)}i ) {
         my $house = uc $1;
         my $unit  = $2;
@@ -717,6 +765,38 @@ sub process_x10_cmd {
 
         return;
     }
+}
+
+sub process_security_line {
+    my ( $addr, $func ) = @_;
+
+    my $key   = 'SEC' . normalize_secaddr($addr);
+    my $state = secfunc_to_state($func);
+
+    unless ( defined $state ) {
+        AE::log info => "Unhandled security func: $func (addr $addr)";
+        return;
+    }
+
+    AE::log info => "processing security $key: $func => $state";
+
+    if ( $ignore{$key} ) {
+        AE::log debug => "ignoring security device $key";
+        return;
+    }
+
+    my %status;
+    $status{'secaddr'}  = $addr;
+    $status{'func'}     = $func;
+    $status{'state'}    = $state;
+    $status{'instance'} = $config{mm_instance};
+
+    my $alias = defined $devcodes{$key} ? $devcodes{$key} : lc $key;
+    $status{'alias'} = $alias if ( defined $devcodes{$key} );
+
+    send_mqtt_status( $alias, \%status );
+    save_state( $alias, \%status );
+    store_state();
 }
 
 sub hass_publish_all() {
