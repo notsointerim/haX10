@@ -44,10 +44,6 @@ schema:
       code: str
       type: list(switch|light|sensor|remote)
       retain: bool?
-  security:
-    - name: str
-      addr: str
-      device_class: str?
   mqtt:
     - host: str
       port: port
