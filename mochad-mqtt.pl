@@ -774,7 +774,7 @@ sub process_security_line {
 
     my $key   = 'SEC' . normalize_secaddr($addr);
     my $state = secfunc_to_state($func);
-	AE::log error => "Unhandled security func: $func (addr $addr)";
+	AE::log error => "security func: $func (addr $addr)";
     unless ( defined $state ) {
         AE::log info => "Unhandled security func: $func (addr $addr)";
         return;
@@ -795,7 +795,8 @@ sub process_security_line {
 
     my $alias = defined $devcodes{$key} ? $devcodes{$key} : lc $key;
     $status{'alias'} = $alias if ( defined $devcodes{$key} );
-
+	
+	AE::log error => "mqtt_status $alias: $func => $status";
     send_mqtt_status( $alias, \%status );
     save_state( $alias, \%status );
     store_state();
