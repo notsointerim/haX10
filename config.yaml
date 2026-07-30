@@ -41,7 +41,8 @@ options:
 schema:
   devices:
     - name: str
-      code: str
+      code: str?
+      sec_addr: str?
       type: list(switch|light|sensor|remote)
       retain: bool?
   mqtt:
